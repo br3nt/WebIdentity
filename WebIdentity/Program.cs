@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
@@ -13,7 +15,27 @@ namespace WebIdentity
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            var host = CreateHostBuilder(args).Build();
+            var logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+            try
+            {
+                using (var scope = host.Services.CreateScope())
+                {
+                    var context = scope.ServiceProvider.GetService<Data.IdentityDbContext>();
+
+                    logger.LogInformation("Migrating the database...");
+                    context.Database.Migrate();
+                    logger.LogInformation("Migrating the database [complete]");
+                }
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Error migrating the database: {e.Message}");
+                Environment.Exit(1);
+            }
+
+            host.Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
